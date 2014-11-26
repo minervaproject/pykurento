@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script src="http://code.jquery.com/jquery-2.1.1.min.js"></script>
+<script src="https://rawgit.com/GoogleChrome/webrtc/master/samples/web/js/adapter.js"></script>
+<script src="/static/js/kurento-utils.js"></script>
+<title>Pykurento Loopback</title>
+</head>
+
+
+<body>
+  <div class="container">
+      <div style="float:left;" id="videoHolder">
+      </div>
+    </div>
+  </div>
+
+
+  <script type="text/javascript">
+    var videoHolder;
+    var room_id = new Date().getMinutes();
+    var participant_id;
+    var participants = {};
+
+    var mediaConstraints = {
+      audio: true,
+      video: {
+        mandatory: {
+          maxWidth: 640,
+          maxFrameRate: 60,
+          minFrameRate: 30
+        }
+      }
+    };
+
+    window.onload = function() {
+      videoHolder = document.getElementById('videoHolder');
+      console.log("Loading complete ...");
+      startSending();
+      checkRoomParticipants();
+    }
+
+    function newVideo() {
+      var videoEl = document.createElement("video");
+      videoEl.autoplay = true;
+      videoEl.width = 480;
+      videoEl.height = 360;
+      videoEl.muted = true;
+      videoHolder.appendChild(videoEl);
+      return videoEl;
+    }
+
+    function startSending() {
+      console.log("Starting video call with room: ", room_id);
+      var rtc = kurentoUtils.WebRtcPeer.startSendOnly(newVideo(), function(offer) {
+        sendOffer(offer, "/room/" + room_id, function(answer) {
+          participant_id = answer.participant_id;
+          console.log("Connected as participant:", participant_id);
+          rtc.processSdpAnswer(answer.answer);
+        });
+      }, console.error, mediaConstraints);
+    }
+
+    function stop() {
+      for (var key in participants) {
+        console.log("Stopping video calls ...");
+        participants[key].dispose();
+        delete participants[key];
+      }
+    }
+
+    function connectParticipant(from_participant_id) {
+      console.log("Connecting to participant: ", from_participant_id);
+      var v_el = newVideo();
+      v_el.style.display = "none";
+      var rtc = participants[from_participant_id] = kurentoUtils.WebRtcPeer.startRecvOnly(v_el, function(offer) {
+        var url = "/room/" + room_id + "/subscribe/" + from_participant_id + "/" + participant_id;
+        sendOffer(offer, url, function(answer) {
+          rtc.processSdpAnswer(answer.answer);
+          v_el.style.display = "block";
+        });
+      }, console.error);
+    }
+
+    function sendOffer(sdpOffer, url, callback) {
+      url = url || "/";
+      callback = callback || function() {};
+
+      console.info('Invoking SDP offer callback function ' + location.host);
+      
+      $.ajax({
+        url: url,
+        type: 'POST',
+        dataType: 'json',
+        contentType: 'application/sdp',
+        data: sdpOffer,
+        success: callback,
+        error: console.error
+      });
+    }
+
+    function checkRoomParticipants() {
+      if (participant_id) {
+
+        $.ajax({
+          url: '/room/' + room_id,
+          success: function(data) {
+            for (var i in data.participants) {
+              var p_id = data.participants[i];
+              console.log("checking participants", p_id, !(p_id in participants), (p_id != participant_id));
+              if (!(p_id in participants) && (p_id != participant_id)) {
+                connectParticipant(p_id);
+              }
+            }
+          },
+          error: function(jqXHR, textStatus, error) {
+            console.error(error);
+          },
+          complete: function() {
+            setTimeout(checkRoomParticipants, 3000);
+          }
+        });
+
+        console.log("checking room");
+      } else {
+        setTimeout(checkRoomParticipants, 3000);
+      }
+      
+    }
+  </script>
+
+</body>
+</html>

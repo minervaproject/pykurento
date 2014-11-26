@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script src="http://code.jquery.com/jquery-2.1.1.min.js"></script>
+<script src="https://rawgit.com/GoogleChrome/webrtc/master/samples/web/js/adapter.js"></script>
+<script src="/static/js/kurento-utils.js"></script>
+<title>Pykurento Loopback</title>
+</head>
+
+
+<body>
+  <div class="container">
+      <div style="float:left;">
+        <h3>Local stream</h3>
+        <video id="videoInput" autoplay width="480px" height="360px"></video>
+      </div>
+      <div style="float:right;">
+        <h3>Remote stream</h3>
+        <video id="videoOutput" autoplay width="480px" height="360px" muted="muted"></video>
+      </div>
+    </div>
+  </div>
+
+
+  <script type="text/javascript">
+    var webRtcPeer;
+    var videoInput;
+    var videoOutput;
+    
+    var mediaConstraints = {
+      audio: true,
+      video: {
+        mandatory: {
+          maxWidth: 640,
+          maxFrameRate: 60,
+          minFrameRate: 30
+        }
+      }
+    };
+
+    window.onload = function() {
+      videoInput = document.getElementById('videoInput');
+      videoOutput = document.getElementById('videoOutput');
+      console.log("Loading complete ...");
+      start();
+    }
+
+    function start() {
+      console.log("Starting video call ...");
+      webRtcPeer = kurentoUtils.WebRtcPeer.startSendRecv(videoInput, videoOutput, onOffer, console.error, mediaConstraints);
+    }
+
+    function stop() {
+      if (webRtcPeer) {
+        console.log("Stopping video call ...");
+        webRtcPeer.dispose();
+        webRtcPeer = null;
+      }
+    }
+
+    function onOffer(sdpOffer) {
+      console.info('Invoking SDP offer callback function ' + location.host);
+      $.ajax({
+        url: '/loopback',
+        type: 'POST',
+        dataType: 'text',
+        contentType: 'application/sdp',
+        data: sdpOffer,
+        success: function(sdpAnswer) {
+          console.log("Received sdpAnswer from server. Processing ...");
+          webRtcPeer.processSdpAnswer(sdpAnswer);
+        },
+        error: function(jqXHR, textStatus, error) {
+          console.error(error);
+        }
+      });
+    }
+
+  </script>
+
+</body>
+</html>
