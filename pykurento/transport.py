@@ -2,7 +2,9 @@ import websocket
 import json
 import time
 import threading
+import logging
 
+logger = logging.getLogger(__name__)
 
 class TimeoutException(Exception):
     pass
@@ -36,7 +38,7 @@ class KurentoTransportException(Exception):
 
 class KurentoTransport:
   def __init__(self, url):
-    print "Creating new KurentoTransport with url: %s" % url
+    logger.debug("Creating new KurentoTransport with url: %s" % url)
     self.url = url
     self.ws = websocket.WebSocket()
     self.current_id = 0
@@ -50,17 +52,17 @@ class KurentoTransport:
     self.thread.start()
 
   def __del__(self):
-    print "Destroying KurentoTransport with url: %s" % self.url
+    logger.debug("Destroying KurentoTransport with url: %s" % self.url)
     self.stopped = True
     self.ws.close()
 
   def _check_connection(self):
     if not self.ws.connected:
-      print "Kurent Client websocket is not connected, reconnecting"
+      logger.info("Kurent Client websocket is not connected, reconnecting")
       try:
         with Timeout(seconds=5):
           self.ws.connect(self.url)
-          print "Kurent Client websocket connected!"
+          logger.info("Kurent Client websocket connected!")
       except TimeoutException:
         # modifying this exception so we can differentiate in the receiver thread
         raise KurentoTransportException("Timeout: Kurento Client websocket connection timed out")
@@ -72,9 +74,9 @@ class KurentoTransport:
         with Timeout(seconds=1):
           self._on_message(self.ws.recv())
       except TimeoutException:
-        print "WS Receiver Timeout"
+        logger.debug("WS Receiver Timeout")
       except Exception as ex:
-        print "WS Receiver Thread %s: %s" % (type(ex), str(ex))
+        logger.error("WS Receiver Thread %s: %s" % (type(ex), str(ex)))
 
   def _next_id(self):
     self.current_id += 1
@@ -82,7 +84,7 @@ class KurentoTransport:
 
   def _on_message(self, message):
     resp = json.loads(message)
-    print "received message: %s" % message
+    logger.debug("received message: %s" % message)
 
     if 'method' in resp:
       self.current_id = resp["id"]
@@ -118,7 +120,7 @@ class KurentoTransport:
     
     self._check_connection()
 
-    print "sending message:  %s" % json.dumps(request)
+    logger.debug("sending message:  %s" % json.dumps(request))
     self.ws.send(json.dumps(request))
 
     while (resp_key not in self.pending_operations):
