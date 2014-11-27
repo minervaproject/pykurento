@@ -3,8 +3,10 @@ import json
 import time
 import threading
 
-class TimeoutError(Exception):
+
+class TimeoutException(Exception):
     pass
+
 
 class Timeout:
   def __init__(self, seconds=1, error_message='Timeout'):
@@ -13,7 +15,7 @@ class Timeout:
     self.timer = None
 
   def handle_timeout(self):
-    raise TimeoutError(self.error_message)
+    raise TimeoutException(self.error_message)
 
   def __enter__(self):
     self.timer = threading.Timer(self.seconds, self.handle_timeout)
@@ -23,57 +25,89 @@ class Timeout:
       self.timer.cancel()
 
 
+class KurentoTransportException(Exception):
+    def __init__(self, message, response={}):
+      super(KurentoTransportException, self).__init__(message)
+      self.response = response
+
+    def __str__(self):
+      return "%s - %s" % (str(self.message), json.dumps(self.response))
+
+
 class KurentoTransport:
   def __init__(self, url):
+    print "Creating new KurentoTransport with url: %s" % url
     self.url = url
     self.ws = websocket.WebSocket()
     self.current_id = 0
     self.session_id = None
     self.pending_operations = {}
+    self.subscriptions = {}
+    self.stopped = False
 
     self.thread = threading.Thread(target=self._run_thread)
     self.thread.daemon = True
     self.thread.start()
 
+  def __del__(self):
+    print "Destroying KurentoTransport with url: %s" % self.url
+    self.stopped = True
+    self.ws.close()
+
   def _check_connection(self):
     if not self.ws.connected:
       print "Kurent Client websocket is not connected, reconnecting"
-      with Timeout(seconds=5, error_message="Timeout: Kurento Client websocket connection timed out"):
-        self.ws.connect(self.url)
-        print "Kurent Client websocket connected!"
+      try:
+        with Timeout(seconds=5):
+          self.ws.connect(self.url)
+          print "Kurent Client websocket connected!"
+      except TimeoutException:
+        # modifying this exception so we can differentiate in the receiver thread
+        raise KurentoTransportException("Timeout: Kurento Client websocket connection timed out")
 
   def _run_thread(self):
-    while True:
+    while not self.stopped:
       try:
         self._check_connection()
-        self.on_message(self.ws.recv())
-        time.sleep(1)
+        with Timeout(seconds=1):
+          self._on_message(self.ws.recv())
+      except TimeoutException:
+        print "WS Receiver Timeout"
       except Exception as ex:
-        print "WS Receiver Thread Exception: %s" % str(ex)
+        print "WS Receiver Thread %s: %s" % (type(ex), str(ex))
 
-  def next_id(self):
+  def _next_id(self):
     self.current_id += 1
     return self.current_id
 
-  def on_message(self, message):
+  def _on_message(self, message):
     resp = json.loads(message)
     print "received message: %s" % message
 
-    if 'error' in resp:
-      raise Exception(resp['error']['message'])
+    if 'method' in resp:
+      self.current_id = resp["id"]
+      if (resp['method'] == 'onEvent'
+          and 'params' in resp
+          and 'value' in resp['params']
+          and 'subscription' in resp['params']
+          and resp['params']['subscription'] in self.subscriptions):
+        sub_id = resp['params']['subscription']
+        fn = self.subscriptions[sub_id]
+        self.session_id = resp['params']['sessionId'] if 'sessionId' in resp['params'] else self.session_id
+        fn(resp["params"]["value"])
 
-    if 'result' in resp and 'sessionId' in resp['result']:
-      self.session_id = resp['result']['sessionId']
+    else:
+      if 'result' in resp and 'sessionId' in resp['result']:
+        self.session_id = resp['result']['sessionId']
+      self.pending_operations["%d_response" % resp["id"]] = resp
 
-    self.pending_operations["%d_response" % resp["id"]] = resp
-
-  def rpc(self, rpc_type, **args):
+  def _rpc(self, rpc_type, **args):
     if self.session_id:
       args["sessionId"] = self.session_id
 
     request = {
       "jsonrpc": "2.0",
-      "id": self.next_id(),
+      "id": self._next_id(),
       "method": rpc_type,
       "params": args
     }
@@ -94,23 +128,28 @@ class KurentoTransport:
     
     del self.pending_operations[req_key]
     del self.pending_operations[resp_key]
-        
-    return resp['result']['value']
+
+    if 'error' in resp:
+      raise KurentoTransportException(resp['error']['message'] if 'message' in resp['error'] else 'Unknown Error', resp)
+    elif 'result' in resp and 'value' in resp['result']:
+      return resp['result']['value']
+    else:
+      return None # just to be explicit
 
   def create(self, obj_type, **args):
-    return self.rpc("create", type=obj_type, constructorParams=args)
+    return self._rpc("create", type=obj_type, constructorParams=args)
 
   def invoke(self, object_id, operation, **args):
-    return self.rpc("invoke", object=object_id, operation=operation, operationParams=args)
+    return self._rpc("invoke", object=object_id, operation=operation, operationParams=args)
 
-  def subscribe(self, object_id, event_type):
-    return self.rpc("subscribe", object=object_id, type=event_type)
+  def subscribe(self, object_id, event_type, fn):
+    subscription_id = self._rpc("subscribe", object=object_id, type=event_type)
+    self.subscriptions[subscription_id] = fn
+    return subscription_id
 
   def unsubscribe(self, subscription_id):
-    return self.rpc("unsubscribe", subscription=subscription_id)
+    del self.subscriptions[subscription_id]
+    return self._rpc("unsubscribe", subscription=subscription_id)
 
   def release(self, object_id):
-    return self.rpc("release", object=object_id)
-
-  def close(self):
-    self.ws.close()
+    return self._rpc("release", object=object_id)

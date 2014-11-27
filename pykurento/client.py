@@ -10,8 +10,4 @@ class KurentoClient:
     return self.transport
 
   def createPipeline(self):
-    pipeline_id = self.transport.create(media.MediaObject.MEDIA_PIPELINE)
-    return media.MediaPipeline(self, pipeline_id)
-
-  def close(self):
-    self.transport.close()
+    return media.MediaPipeline(self)

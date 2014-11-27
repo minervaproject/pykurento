@@ -1,33 +1,16 @@
-# This is the object graph as described at http://www.kurento.org/docs/5.0.3/mastering/kurento_API.html
-#                   MediaObject
-# Hub               MediaElement                MediaPipeline
-#          HubPort    Endpoint    Filter
-#           InputEndpoint OutputEndpoint
-
 class MediaObject:
-  MEDIA_PIPELINE = "MediaPipeline"
 
-  # Endpoints
-  HTTP_GET_ENDPOINT = "HttpGetEndpoint"
-  HTTP_POST_ENDPOINT = "HttpPostEndpoint"
-  PLAYER_ENDPOINT = "PlayerEndpoint"
-  RECORDER_ENDPOINT = "RecorderEndpoint"
-  RTP_ENDPOINT = "RtpEndpoint"
-  WEB_RTC_ENDPOINT = "WebRtcEndpoint"
+  # This is the object graph as described at http://www.kurento.org/docs/5.0.3/mastering/kurento_API.html
+  # We dont mimic it precisely yet as its still being built out, not all abstractions are necessary
+  #                   MediaObject
+  # Hub               MediaElement                MediaPipeline
+  #          HubPort    Endpoint    Filter
+  #           InputEndpoint OutputEndpoint
 
-  # Filters
-  Z_BAR_FILTER = "ZBarFilter"
-  FACE_OVERLAY_FILTER = "FaceOverlayFilter"
-  GSTREAMER_FILTER = "GStreamerFilter"
-
-  # Hub
-  COMPOSITE = "Composite"
-  DISPATCHER = "Dispatcher"
-  DISPATCHER_ONE_TO_MANY = "DispatcherOneToMany"
-
-  def __init__(self, parent, id):
+  def __init__(self, parent, **args):
     self.parent = parent
-    self.id = id
+    args["mediaPipeline"] = self.get_pipeline().id
+    self.id = self.get_transport().create(self.__class__.__name__, **args)
 
   def get_transport(self):
     return self.parent.get_transport()
@@ -38,28 +21,97 @@ class MediaObject:
   def invoke(self, method, **args):
     return self.get_transport().invoke(self.id, method, **args)
 
+  def subscribe(self, event, fn):
+    def _callback(value):
+      fn(value, self)
+    return self.get_transport().subscribe(self.id, event, _callback)
+
   def release(self):
     return self.get_transport().release(self.id)
 
 
 class MediaPipeline(MediaObject):
+  def __init__(self, parent, **args):
+    self.parent = parent
+    self.id = self.get_transport().create(self.__class__.__name__, **args)
+
   def get_pipeline(self):
     return self
 
-  def createWebRtcEndpoint(self):
-    endpoint_id = self.get_transport().create(self.WEB_RTC_ENDPOINT, mediaPipeline=self.id)
-    return WebRtcEndpoint(self, endpoint_id)
-
 
 class MediaElement(MediaObject):
-  CONNECT = "connect"
-
   def connect(self, sink):
-    return self.invoke(self.CONNECT, sink=sink.id)
+    return self.invoke("connect", sink=sink.id)
 
 
+# ENDPOINTS
+
+class HttpGetEndpoint(MediaElement):
+  pass
+
+class HttpPostEndpoint(MediaElement):
+  pass
+
+class PlayerEndpoint(MediaElement):
+  pass
+
+class RecorderEndpoint(MediaElement):
+  pass
+
+class RtpEndpoint(MediaElement):
+  pass
+  
 class WebRtcEndpoint(MediaElement):
-  PROCESS_OFFER = "processOffer"
-
   def processOffer(self, offer):
-    return self.invoke(self.PROCESS_OFFER, offer=offer)
+    return self.invoke("processOffer", offer=offer)
+
+
+# FILTERS
+
+class GStreamerFilter(MediaElement):
+  pass
+
+
+class FaceOverlayFilter(MediaElement):
+  pass
+
+
+class ZBarFilter(MediaElement):
+  def on_code_found_event(self, fn):
+    return self.subscribe("CodeFoundEvent", fn)
+
+
+# HUBS
+
+class Composite(MediaElement):
+  pass
+
+class Dispatcher(MediaElement):
+  pass
+
+class DispatcherOneToMany(MediaElement):
+  pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

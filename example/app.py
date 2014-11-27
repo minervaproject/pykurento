@@ -11,7 +11,7 @@ logging.getLogger().setLevel(logging.DEBUG)
 import tornado.ioloop
 import tornado.web
 
-from pykurento import KurentoClient
+from pykurento import KurentoClient, media
 
 kurento = KurentoClient("ws://localhost:8888/kurento")
 
@@ -21,7 +21,7 @@ class Participant:
     self.participant_id = str(uuid.uuid4())
     self.room = room
     self.offer = offer
-    self.incoming = self.room.pipeline.createWebRtcEndpoint()
+    self.incoming = media.WebRtcEndpoint(self.room.pipeline)
     self.outgoings = {}
     self.answer = None
 
@@ -33,7 +33,7 @@ class Participant:
 
   def connect(self, participant, offer):
     if participant.participant_id not in self.outgoings:
-      self.outgoings[participant.participant_id] = self.room.pipeline.createWebRtcEndpoint()
+      self.outgoings[participant.participant_id] = media.WebRtcEndpoint(self.room.pipeline)
       self.incoming.connect(self.outgoings[participant.participant_id])
 
     outgoing = self.outgoings[participant.participant_id]
@@ -115,9 +115,14 @@ class LoopbackHandler(tornado.web.RequestHandler):
   def post(self):
     sdp_offer = self.request.body
     pipeline = kurento.createPipeline()
-    wrtc_pub = pipeline.createWebRtcEndpoint()
-    sdp_answer = wrtc_pub.processOffer(sdp_offer)
+    wrtc_pub = media.WebRtcEndpoint(pipeline)
+    #gst_scale = media.GStreamerFilter(pipeline, "videoscale")
+    #gst_raw = media.GStreamerFilter(pipeline, "video/*, width=50")
     wrtc_pub.connect(wrtc_pub)
+    #gst_scale.connect(wrtc_pub)
+    #gst_scale.connect(gst_raw)
+    #gst_raw.connect(wrtc_pub)
+    sdp_answer = wrtc_pub.processOffer(sdp_offer)
     self.finish(str(sdp_answer))
 
 
@@ -128,8 +133,7 @@ application = tornado.web.Application([
   (r"/room/(?P<room_id>\d*)", RoomHandler),
   (r"/room/(?P<room_id>[^/]*)/subscribe/(?P<from_participant_id>[^/]*)/(?P<to_participant_id>[^/]*)", SubscribeToParticipantHandler),
   (r'/static/(.*)', tornado.web.StaticFileHandler, {'path': os.path.join(os.path.dirname(__file__), "static")}),
-  #(r"/join/{room_id}", JoinRoomHandler),
-], debug=True) #, autoreload=False)
+], debug=True)
 
 if __name__ == "__main__":
   application.listen(8080)
