@@ -7,7 +7,6 @@ logger = logging.getLogger(__name__)
 #                   MediaObject
 # Hub               MediaElement                MediaPipeline
 #          HubPort    Endpoint    Filter
-#           InputEndpoint OutputEndpoint
 
 
 class MediaObject(object):
@@ -51,27 +50,53 @@ class MediaElement(MediaObject):
 
 # ENDPOINTS
 
-class HttpGetEndpoint(MediaElement):
+class UriEndpoint(MediaElement):
+  def get_uri(self):
+    return self.invoke("getUri")
+
+  def pause(self):
+    return self.invoke("pause")
+
+  def stop(self):
+    return self.invoke("stop")
+
+
+class PlayerEndpoint(UriEndpoint):
+  def play(self):
+    return self.invoke("play")
+
+  def on_end_of_stream_event(self, fn):
+    return self.subscribe("EndOfStream", fn)
+
+
+class RecorderEndpoint(UriEndpoint):
+  def record(self):
+    return self.invoke("record")
+
+
+class SessionEndpoint(MediaElement):
+  def on_media_session_started_event(self, fn):
+    return self.subscribe("MediaSessionStarted", fn)
+
+  def on_media_session_terminated_event(self, fn):
+    return self.subscribe("MediaSessionTerminated", fn)
+
+
+class HttpEndpoint(SessionEndpoint):
+  def get_url(self):
+    return self.invoke("getUrl")
+
+
+class HttpGetEndpoint(HttpEndpoint):
   pass
 
 
-class HttpPostEndpoint(MediaElement):
-  pass
+class HttpPostEndpoint(HttpEndpoint):
+  def on_end_of_stream_event(self, fn):
+    return self.subscribe("EndOfStream", fn)
 
 
-class PlayerEndpoint(MediaElement):
-  pass
-
-
-class RecorderEndpoint(MediaElement):
-  pass
-
-
-class RtpEndpoint(MediaElement):
-  pass
-
-  
-class WebRtcEndpoint(MediaElement):
+class SdpEndpoint(SessionEndpoint):
   def generate_offer(self):
     return self.invoke("generateOffer")
 
@@ -88,6 +113,14 @@ class WebRtcEndpoint(MediaElement):
     return self.invoke("getRemoteSessionDescriptor")
 
 
+class RtpEndpoint(SdpEndpoint):
+  pass
+
+  
+class WebRtcEndpoint(SdpEndpoint):
+  pass
+
+
 # FILTERS
 
 class GStreamerFilter(MediaElement):
@@ -101,7 +134,7 @@ class FaceOverlayFilter(MediaElement):
 
 class ZBarFilter(MediaElement):
   def on_code_found_event(self, fn):
-    return self.subscribe("CodeFoundEvent", fn)
+    return self.subscribe("CodeFound", fn)
 
 
 # HUBS

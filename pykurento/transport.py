@@ -87,7 +87,6 @@ class KurentoTransport(object):
     logger.debug("received message: %s" % message)
 
     if 'method' in resp:
-      self.current_id = resp["id"]
       if (resp['method'] == 'onEvent'
           and 'params' in resp
           and 'value' in resp['params']

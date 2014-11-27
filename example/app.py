@@ -108,6 +108,11 @@ class RoomIndexHandler(tornado.web.RequestHandler):
 
 
 class LoopbackHandler(tornado.web.RequestHandler):
+  def on_event(self, *args, **kwargs):
+    print "received event!"
+    print args
+    print kwargs
+
   def get(self):
     with open("loopback.html","r") as f:
       self.finish(f.read())
@@ -116,18 +121,26 @@ class LoopbackHandler(tornado.web.RequestHandler):
     sdp_offer = self.request.body
     pipeline = kurento.create_pipeline()
     wrtc_pub = media.WebRtcEndpoint(pipeline)
+
+    wrtc_pub.on_media_session_started_event(self.on_event)
+    wrtc_pub.on_media_session_terminated_event(self.on_event)
+    # wrtc_pub.connect(wrtc_pub)
+
     sdp_answer = wrtc_pub.process_offer(sdp_offer)
     self.finish(str(sdp_answer))
 
     gst_flip = media.GStreamerFilter(pipeline, command="videoflip method=4")
     face_overlay = media.FaceOverlayFilter(pipeline)
-    face_overlay.set_overlayed_image(
-      "https://raw.githubusercontent.com/minervaproject/pykurento/master/example/static/img/rainbowpox.png", 
-      0, 0, 1, 1)
+    face_overlay.set_overlayed_image("https://raw.githubusercontent.com/minervaproject/pykurento/master/example/static/img/rainbowpox.png", 0, 0, 1, 1)
+    recorder = media.RecorderEndpoint(pipeline, uri="file:///tmp/test.webm")
+    recorder.record()
     
     wrtc_pub.connect(gst_flip)
     gst_flip.connect(face_overlay)
     face_overlay.connect(wrtc_pub)
+    face_overlay.connect(recorder)
+
+    print recorder.get_uri()
 
 
 application = tornado.web.Application([
