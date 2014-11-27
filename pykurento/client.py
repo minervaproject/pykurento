@@ -1,7 +1,7 @@
 from pykurento import media
 from pykurento.transport import KurentoTransport
 
-class KurentoClient:
+class KurentoClient(object):
   def __init__(self, url):
     self.url = url
     self.transport = KurentoTransport(self.url)

@@ -16,7 +16,7 @@ from pykurento import KurentoClient, media
 kurento = KurentoClient("ws://localhost:8888/kurento")
 
 
-class Participant:
+class Participant(object):
   def __init__(self, room, offer):
     self.participant_id = str(uuid.uuid4())
     self.room = room
@@ -40,7 +40,7 @@ class Participant:
     return outgoing.processOffer(offer)
 
 
-class Room:
+class Room(object):
   rooms = {}
 
   @classmethod

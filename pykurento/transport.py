@@ -10,7 +10,7 @@ class TimeoutException(Exception):
     pass
 
 
-class Timeout:
+class Timeout(object):
   def __init__(self, seconds=1, error_message='Timeout'):
     self.seconds = seconds
     self.error_message = error_message
@@ -36,7 +36,7 @@ class KurentoTransportException(Exception):
       return "%s - %s" % (str(self.message), json.dumps(self.response))
 
 
-class KurentoTransport:
+class KurentoTransport(object):
   def __init__(self, url):
     logger.debug("Creating new KurentoTransport with url: %s" % url)
     self.url = url
