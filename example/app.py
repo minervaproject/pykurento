@@ -4,6 +4,7 @@ import uuid
 import os
 import sys
 import logging
+import time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 logging.getLogger().setLevel(logging.DEBUG)
@@ -120,32 +121,68 @@ class LoopbackHandler(tornado.web.RequestHandler):
   def post(self):
     sdp_offer = self.request.body
     pipeline = kurento.create_pipeline()
-    wrtc_pub = media.WebRtcEndpoint(pipeline)
+    wrtc = media.WebRtcEndpoint(pipeline)
 
-    wrtc_pub.on_media_session_started_event(self.on_event)
-    wrtc_pub.on_media_session_terminated_event(self.on_event)
-    # wrtc_pub.connect(wrtc_pub)
+    wrtc.on_media_session_started_event(self.on_event)
+    wrtc.on_media_session_terminated_event(self.on_event)
 
-    sdp_answer = wrtc_pub.process_offer(sdp_offer)
+    sdp_answer = wrtc.process_offer(sdp_offer)
     self.finish(str(sdp_answer))
 
-    gst_flip = media.GStreamerFilter(pipeline, command="videoflip method=4")
-    face_overlay = media.FaceOverlayFilter(pipeline)
-    face_overlay.set_overlayed_image("https://raw.githubusercontent.com/minervaproject/pykurento/master/example/static/img/rainbowpox.png", 0, 0, 1, 1)
+    # setup recording
     recorder = media.RecorderEndpoint(pipeline, uri="file:///tmp/test.webm")
+    wrtc.connect(recorder)
     recorder.record()
-    
-    wrtc_pub.connect(gst_flip)
-    gst_flip.connect(face_overlay)
-    face_overlay.connect(wrtc_pub)
-    face_overlay.connect(recorder)
 
-    print recorder.get_uri()
+    # plain old loopback
+    # wrtc.connect(wrtc)
+
+    # fun face overlay
+    face = media.FaceOverlayFilter(pipeline)
+    face.set_overlayed_image("https://raw.githubusercontent.com/minervaproject/pykurento/master/example/static/img/rainbowpox.png", 0, 0, 1, 1)
+    wrtc.connect(face)
+    face.connect(wrtc)
+
+
+class MultiResHandler(tornado.web.RequestHandler):
+  low_res = None
+  med_res = None
+  high_res = None
+  incoming = None
+
+  def get(self):
+    res = self.get_argument("res", None)
+    if res and MultiResHandler.incoming:
+      if res == "high":
+        MultiResHandler.high_res.connect(MultiResHandler.incoming)
+      elif res == "med":
+        MultiResHandler.med_res.connect(MultiResHandler.incoming)
+      elif res == "low":
+        MultiResHandler.low_res.connect(MultiResHandler.incoming)
+    else:
+      with open("multires.html","r") as f:
+        self.finish(f.read())
+
+  def post(self):
+    sdp_offer = self.request.body
+    pipeline = kurento.create_pipeline()
+    MultiResHandler.incoming = media.WebRtcEndpoint(pipeline)
+    MultiResHandler.high_res = MultiResHandler.incoming
+    MultiResHandler.low_res = media.GStreamerFilter(pipeline, command="capsfilter caps=video/x-raw,width=160,height=120", filterType="VIDEO")
+    MultiResHandler.med_res = media.GStreamerFilter(pipeline, command="capsfilter caps=video/x-raw,width=320,height=240", filterType="VIDEO")
+
+    sdp_answer = MultiResHandler.incoming.process_offer(sdp_offer)
+    self.finish(str(sdp_answer))
+
+    MultiResHandler.high_res.connect(MultiResHandler.incoming)
+    MultiResHandler.incoming.connect(MultiResHandler.low_res)
+    MultiResHandler.incoming.connect(MultiResHandler.med_res)
 
 
 application = tornado.web.Application([
   (r"/", IndexHandler),
   (r"/loopback", LoopbackHandler),
+  (r"/multires", MultiResHandler),
   (r"/room", RoomIndexHandler),
   (r"/room/(?P<room_id>\d*)", RoomHandler),
   (r"/room/(?P<room_id>[^/]*)/subscribe/(?P<from_participant_id>[^/]*)/(?P<to_participant_id>[^/]*)", SubscribeToParticipantHandler),
