@@ -72,19 +72,19 @@ class RtpEndpoint(MediaElement):
 
   
 class WebRtcEndpoint(MediaElement):
-  def generateOffer(self):
+  def generate_offer(self):
     return self.invoke("generateOffer")
 
-  def processOffer(self, offer):
+  def process_offer(self, offer):
     return self.invoke("processOffer", offer=offer)
 
-  def processAnswer(self, answer):
+  def process_answer(self, answer):
     return self.invoke("processAnswer", answer=answer)
 
-  def getLocalSessionDescriptor(self):
+  def get_local_session_descriptor(self):
     return self.invoke("getLocalSessionDescriptor")
 
-  def getRemoteSessionDescriptor(self):
+  def get_remote_session_descriptor(self):
     return self.invoke("getRemoteSessionDescriptor")
 
 
@@ -95,7 +95,8 @@ class GStreamerFilter(MediaElement):
 
 
 class FaceOverlayFilter(MediaElement):
-  pass
+  def set_overlayed_image(self, uri, offset_x, offset_y, width, height):
+    return self.invoke("setOverlayedImage", uri=uri, offsetXPercent=offset_x, offsetYPercent=offset_y, widthPercent=width, heightPercent=height)
 
 
 class ZBarFilter(MediaElement):
@@ -115,27 +116,3 @@ class Dispatcher(MediaElement):
 
 class DispatcherOneToMany(MediaElement):
   pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

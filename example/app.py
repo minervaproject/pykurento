@@ -27,7 +27,7 @@ class Participant(object):
 
   def get_answer(self):
     if not self.answer:
-      self.answer = self.incoming.processOffer(self.offer)
+      self.answer = self.incoming.process_offer(self.offer)
 
     return self.answer
 
@@ -37,7 +37,7 @@ class Participant(object):
       self.incoming.connect(self.outgoings[participant.participant_id])
 
     outgoing = self.outgoings[participant.participant_id]
-    return outgoing.processOffer(offer)
+    return outgoing.process_offer(offer)
 
 
 class Room(object):
@@ -52,13 +52,13 @@ class Room(object):
   def __init__(self, room_id):
     self.room_id = room_id
     self.participants = {}
-    self.pipeline = kurento.createPipeline()
+    self.pipeline = kurento.create_pipeline()
 
-  def addParticipant(self, participant):
+  def add_participant(self, participant):
     self.participants[participant.participant_id] = participant
     return participant
 
-  def getParticipant(self, participant_id):
+  def get_participant(self, participant_id):
     return self.participants[participant_id] if participant_id in self.participants else None
 
 
@@ -70,7 +70,7 @@ class RoomHandler(tornado.web.RequestHandler):
   def post(self, room_id):
     room = Room.get(room_id)
     sdp_offer = self.request.body
-    participant = room.addParticipant(Participant(room, sdp_offer))
+    participant = room.add_participant(Participant(room, sdp_offer))
     sdp_answer = participant.get_answer()
 
     self.finish({
@@ -83,8 +83,8 @@ class SubscribeToParticipantHandler(tornado.web.RequestHandler):
   def post(self, room_id, from_participant_id, to_participant_id):
     room = Room.get(room_id)
     sdp_offer = self.request.body
-    from_participant = room.getParticipant(from_participant_id)
-    to_participant = room.getParticipant(to_participant_id)
+    from_participant = room.get_participant(from_participant_id)
+    to_participant = room.get_participant(to_participant_id)
 
     if from_participant and to_participant:
       sdp_answer = from_participant.connect(to_participant, sdp_offer)
@@ -114,16 +114,18 @@ class LoopbackHandler(tornado.web.RequestHandler):
 
   def post(self):
     sdp_offer = self.request.body
-    pipeline = kurento.createPipeline()
+    pipeline = kurento.create_pipeline()
     wrtc_pub = media.WebRtcEndpoint(pipeline)
-    #gst_scale = media.GStreamerFilter(pipeline, "videoscale")
-    #gst_raw = media.GStreamerFilter(pipeline, "video/*, width=50")
-    wrtc_pub.connect(wrtc_pub)
-    #gst_scale.connect(wrtc_pub)
-    #gst_scale.connect(gst_raw)
-    #gst_raw.connect(wrtc_pub)
-    sdp_answer = wrtc_pub.processOffer(sdp_offer)
+    sdp_answer = wrtc_pub.process_offer(sdp_offer)
     self.finish(str(sdp_answer))
+
+    gst_flip = media.GStreamerFilter(pipeline, command="videoflip method=4")
+    face_overlay = media.FaceOverlayFilter(pipeline)
+    face_overlay.set_overlayed_image("http://files.kurento.org/imgs/mario-wings.png", -1, -1.2, 1.6, 1.6)
+    
+    wrtc_pub.connect(gst_flip)
+    gst_flip.connect(face_overlay)
+    face_overlay.connect(wrtc_pub)
 
 
 application = tornado.web.Application([

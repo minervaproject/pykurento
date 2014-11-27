@@ -9,5 +9,5 @@ class KurentoClient(object):
   def get_transport(self):
     return self.transport
 
-  def createPipeline(self):
+  def create_pipeline(self):
     return media.MediaPipeline(self)

@@ -13,7 +13,7 @@ pip install git+https://github.com/minervaproject/pykurento.git#egg=pykurento
 Here's a simple example of a loopback pipeline created in a tornado request handler.
 
 ```python
-from pykurento import KurentoClient
+from pykurento import KurentoClient, media
 
 kurento = KurentoClient("ws://localhost:8888/kurento")
 
@@ -24,9 +24,9 @@ class LoopbackHandler(tornado.web.RequestHandler):
 
   def post(self):
     sdp_offer = self.request.body
-    pipeline = kurento.createPipeline()
-    wrtc_pub = pipeline.createWebRtcEndpoint()
-    sdp_answer = wrtc_pub.processOffer(sdp_offer)
+    pipeline = kurento.create_pipeline()
+    wrtc_pub = media.WebRtcEndpoint()
+    sdp_answer = wrtc_pub.process_offer(sdp_offer)
     wrtc_pub.connect(wrtc_pub)
     self.finish(str(sdp_answer))
 ```
