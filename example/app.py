@@ -121,7 +121,9 @@ class LoopbackHandler(tornado.web.RequestHandler):
 
     gst_flip = media.GStreamerFilter(pipeline, command="videoflip method=4")
     face_overlay = media.FaceOverlayFilter(pipeline)
-    face_overlay.set_overlayed_image("http://files.kurento.org/imgs/mario-wings.png", -1, -1.2, 1.6, 1.6)
+    face_overlay.set_overlayed_image(
+      "https://raw.githubusercontent.com/minervaproject/pykurento/master/example/static/img/rainbowpox.png", 
+      0, 0, 1, 1)
     
     wrtc_pub.connect(gst_flip)
     gst_flip.connect(face_overlay)
