@@ -6,8 +6,8 @@
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<script src="http://code.jquery.com/jquery-2.1.1.min.js"></script>
-<script src="https://rawgit.com/webrtc/samples/master/src/js/adapter.js"></script>
+<script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+<script src="//rawgit.com/webrtc/samples/master/src/js/adapter.js"></script>
 <script src="/static/js/kurento-utils.js"></script>
 <title>Pykurento Loopback</title>
 </head>
@@ -26,6 +26,8 @@
     var room_id = new Date().getMinutes();
     var participant_id;
     var participants = {};
+    var _err = function() { console.error(arguments); };
+    var _log = function() { console.log(arguments); };
 
     var mediaConstraints = {
       audio: true,
@@ -33,7 +35,7 @@
         mandatory: {
           maxWidth: 640,
           maxFrameRate: 60,
-          minFrameRate: 30
+          minFrameRate: 1
         }
       }
     };
@@ -61,7 +63,7 @@
           console.log("Connected as participant:", participant_id);
           rtc.processSdpAnswer(answer.answer);
         });
-      }, console.error, mediaConstraints);
+      }, _err, mediaConstraints);
     }
 
     function stop() {
@@ -82,7 +84,7 @@
           rtc.processSdpAnswer(answer.answer);
           v_el.style.display = "block";
         });
-      }, console.error);
+      }, _err);
     }
 
     function sendOffer(sdpOffer, url, callback) {
@@ -98,7 +100,7 @@
         contentType: 'application/sdp',
         data: sdpOffer,
         success: callback,
-        error: console.error
+        error: _err
       });
     }
 
@@ -116,9 +118,7 @@
               }
             }
           },
-          error: function(jqXHR, textStatus, error) {
-            console.error(error);
-          },
+          error: _err,
           complete: function() {
             setTimeout(checkRoomParticipants, 3000);
           }
