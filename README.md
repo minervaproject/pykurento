@@ -1,5 +1,7 @@
 # Pykurento
 
+[![Join the chat at https://gitter.im/minervaproject/pykurento](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/minervaproject/pykurento?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Pykurento is a [Kurento](http://www.kurento.org/docs/5.0.3/what_is_kurento.html) client written in python and uses the [websocket-client](https://github.com/liris/websocket-client) library for its transport layer.
 
 ## Installing
