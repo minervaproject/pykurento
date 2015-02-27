@@ -23,7 +23,7 @@
 
   <script type="text/javascript">
     var videoHolder;
-    var room_id = new Date().getMinutes();
+    var room_id = (window.location.search.match(/[\?&]id=(\d*)/) || []).pop() || new Date().getMinutes();
     var participant_id;
     var participants = {};
     var _err = function() { console.error(arguments); };
