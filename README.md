@@ -61,6 +61,9 @@ For making the 2nd bullet work, the easiest way during development is to setup a
 ssh -nNT -i <identity file> -L 8888:localhost:8888 <user>@<server address>
 ```
 
+### Gitter Chatroom
+Find out more info in the Gitter chatroom, located at https://gitter.im/minervaproject/pykurento
+
 ## License
 As with Kurento, this client is released under the terms of [LGPL version 2.1](http://www.gnu.org/licenses/lgpl-2.1.html) license.
 
