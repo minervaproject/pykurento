@@ -1,5 +1,5 @@
 import tornado.web
-
+from pykurento import media
 from examples import kurento, render_view
 
 class LoopbackHandler(tornado.web.RequestHandler):
