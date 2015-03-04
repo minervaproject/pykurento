@@ -8,6 +8,10 @@ logger = logging.getLogger(__name__)
 # Hub               MediaElement                MediaPipeline
 #          HubPort    Endpoint    Filter
 
+class MediaType(object):
+  AUDIO = "AUDIO"
+  VIDEO = "VIDEO"
+  DATA = "DATA"
 
 class MediaObject(object):
   def __init__(self, parent, **args):
@@ -26,6 +30,7 @@ class MediaObject(object):
   def get_pipeline(self):
     return self.parent.get_pipeline()
 
+  # todo: remove arguments that have a value of None to let optional params work seamlessly
   def invoke(self, method, **args):
     return self.get_transport().invoke(self.id, method, **args)
 
@@ -51,6 +56,20 @@ class MediaElement(MediaObject):
   def connect(self, sink):
     return self.invoke("connect", sink=sink.id)
 
+  def disconnect(self, sink):
+    return self.invoke("disconnect", sink=sink.id)
+
+  def set_audio_format(self, caps):
+    return self.invoke("setAudioFormat", caps=caps)
+
+  def set_video_format(self, caps):
+    return self.invoke("setVideoFormat", caps=caps)
+
+  def get_source_connections(self, media_type):
+    return self.invoke("getSourceConnections", mediaType=media_type)
+
+  def get_sink_connections(self, media_type):
+    return self.invoke("getSinkConnections", mediaType=media_type)
 
 # ENDPOINTS
 
