@@ -11,11 +11,15 @@ logger = logging.getLogger(__name__)
 
 class MediaObject(object):
   def __init__(self, parent, **args):
-    logger.debug("Creating new %s", self.__class__.__name__)
     self.parent = parent
     self.options = args
-    self.id = args['id'] if 'id' in args else self.get_transport().create(self.__class__.__name__, **args)
-
+    if 'id' in args:
+      logger.debug("Creating existing %s with id=%s", self.__class__.__name__, args['id'])
+      self.id = args['id']
+    else:
+      logger.debug("Creating new %s", self.__class__.__name__)
+      self.id = self.get_transport().create(self.__class__.__name__, **args)
+  
   def get_transport(self):
     return self.parent.get_transport()
 
