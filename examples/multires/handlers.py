@@ -1,5 +1,7 @@
 import tornado.web
 
+from examples import kurento, render_view
+
 class MultiResHandler(tornado.web.RequestHandler):
   low_res = None
   med_res = None
@@ -16,8 +18,7 @@ class MultiResHandler(tornado.web.RequestHandler):
       elif res == "low":
         MultiResHandler.low_res.connect(MultiResHandler.incoming)
     else:
-      with open("views/multires.html","r") as f:
-        self.finish(f.read())
+      render_view(self, "multires")
 
   def post(self):
     sdp_offer = self.request.body

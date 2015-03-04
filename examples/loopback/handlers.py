@@ -1,8 +1,6 @@
 import tornado.web
 
-import examples
-
-kurento = examples.kurento
+from examples import kurento, render_view
 
 class LoopbackHandler(tornado.web.RequestHandler):
   def on_event(self, *args, **kwargs):
@@ -11,8 +9,7 @@ class LoopbackHandler(tornado.web.RequestHandler):
     print kwargs
 
   def get(self):
-    with open("views/loopback.html","r") as f:
-      self.finish(f.read())
+    render_view(self, "loopback")
 
   def post(self):
     sdp_offer = self.request.body
