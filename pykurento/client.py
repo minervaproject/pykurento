@@ -11,3 +11,6 @@ class KurentoClient(object):
 
   def create_pipeline(self):
     return media.MediaPipeline(self)
+
+  def get_pipeline(self, id):
+    return media.MediaPipeline(self, id=id)

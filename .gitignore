@@ -1,2 +1,5 @@
 *.pyc
 .pypirc
+dist/
+pykurento.egg-info/
+rooms.db

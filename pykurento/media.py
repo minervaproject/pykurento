@@ -14,7 +14,7 @@ class MediaObject(object):
     logger.debug("Creating new %s", self.__class__.__name__)
     self.parent = parent
     self.options = args
-    self.id = self.get_transport().create(self.__class__.__name__, **args)
+    self.id = args['id'] if 'id' in args else self.get_transport().create(self.__class__.__name__, **args)
 
   def get_transport(self):
     return self.parent.get_transport()

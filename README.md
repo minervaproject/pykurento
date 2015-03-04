@@ -33,7 +33,7 @@ class LoopbackHandler(tornado.web.RequestHandler):
     self.finish(str(sdp_answer))
 ```
 
-[Source for loopback.html](https://github.com/minervaproject/pykurento/blob/master/example/loopback.html)
+[Source for loopback.html](https://github.com/minervaproject/pykurento/blob/master/examples/views/loopback.html)
 
 
 ## Developing
@@ -43,21 +43,22 @@ class LoopbackHandler(tornado.web.RequestHandler):
 ```
 git clone https://github.com/minervaproject/pykurento
 cd ./pykurento
-pip install -r requirements.txt
+pip install -r examples/requirements.txt
 ```
 
-### Running the example
+### Running the examples
 
 ```
-cd ./example
-./app.py
+./examples/app.py
 ```
 
-There are a couple of assumptions the example makes.
-* You want to run on port 8080 - its hardcoded in there at the moment
-* Your KMS address is localhost:8888 - again, hardcoded
+or
 
-For making the 2nd bullet work, the easiest way during development is to setup an ssh tunnel to your media server.
+```
+PORT=8080 ./examples/app.py
+```
+
+There is an assumption in the examples that your KMS address is localhost:8888. The easiest way during development to make this work is to setup an ssh tunnel to your media server.
 
 ```
 ssh -nNT -i <identity file> -L 8888:localhost:8888 <user>@<server address>
