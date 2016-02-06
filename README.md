@@ -1,6 +1,7 @@
 # Pykurento
 
-[![Join the chat at https://gitter.im/minervaproject/pykurento](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/minervaproject/pykurento?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+##We are no longer actively developing this project. Sorry to those who were interested. Feel free to fork.
+
 
 Pykurento is a [Kurento](http://www.kurento.org/docs/5.0.3/what_is_kurento.html) client written in python and uses the [websocket-client](https://github.com/liris/websocket-client) library for its transport layer.
 
@@ -63,9 +64,6 @@ There is an assumption in the examples that your KMS address is localhost:8888. 
 ```
 ssh -nNT -i <identity file> -L 8888:localhost:8888 <user>@<server address>
 ```
-
-### Gitter Chatroom
-Find out more info in the Gitter chatroom, located at https://gitter.im/minervaproject/pykurento
 
 ## License
 As with Kurento, this client is released under the terms of [LGPL version 2.1](http://www.gnu.org/licenses/lgpl-2.1.html) license.
