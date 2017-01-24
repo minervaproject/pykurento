@@ -3,12 +3,14 @@ import json
 import time
 import threading
 import logging
+from collections import namedtuple
 
 logger = logging.getLogger(__name__)
 
 class TimeoutException(Exception):
     pass
 
+Subscription = namedtuple('Subscription', ['id', 'fn'])
 
 class Timeout(object):
   def __init__(self, seconds=1, error_message='Timeout'):
@@ -21,7 +23,7 @@ class Timeout(object):
 
   def __enter__(self):
     self.timer = threading.Timer(self.seconds, self.handle_timeout)
-  
+
   def __exit__(self, type, value, traceback):
     if self.timer:
       self.timer.cancel()
@@ -87,20 +89,25 @@ class KurentoTransport(object):
     logger.debug("received message: %s" % message)
 
     if 'method' in resp:
-      if (resp['method'] == 'onEvent'
-          and 'params' in resp
-          and 'value' in resp['params']
-          and 'subscription' in resp['params']
-          and resp['params']['subscription'] in self.subscriptions):
-        sub_id = resp['params']['subscription']
-        fn = self.subscriptions[sub_id]
-        self.session_id = resp['params']['sessionId'] if 'sessionId' in resp['params'] else self.session_id
-        fn(resp["params"]["value"])
+      if resp['method'] == 'onEvent':
+          self._on_event(resp)
 
     else:
       if 'result' in resp and 'sessionId' in resp['result']:
         self.session_id = resp['result']['sessionId']
       self.pending_operations["%d_response" % resp["id"]] = resp
+
+  def _on_event(self, resp):
+    v = resp.get('params', {}).get('value', {})
+
+    source = v.get('object', '')
+    event_type = v.get('type', '')
+
+    sub = self.subscriptions.get(source, {}).get(event_type)
+
+    if sub:
+        fn = sub.fn
+        fn(v)
 
   def _rpc(self, rpc_type, **args):
     if self.session_id:
@@ -116,7 +123,7 @@ class KurentoTransport(object):
     resp_key = "%d_response" % request["id"]
 
     self.pending_operations[req_key] = request
-    
+
     self._check_connection()
 
     logger.debug("sending message:  %s" % json.dumps(request))
@@ -126,7 +133,7 @@ class KurentoTransport(object):
       time.sleep(1)
 
     resp = self.pending_operations[resp_key]
-    
+
     del self.pending_operations[req_key]
     del self.pending_operations[resp_key]
 
@@ -143,14 +150,18 @@ class KurentoTransport(object):
   def invoke(self, object_id, operation, **args):
     return self._rpc("invoke", object=object_id, operation=operation, operationParams=args)
 
+
   def subscribe(self, object_id, event_type, fn):
     subscription_id = self._rpc("subscribe", object=object_id, type=event_type)
-    self.subscriptions[subscription_id] = fn
+    events = self.subscriptions.get(object_id, {})
+    events[event_type] = Subscription(subscription_id, fn)
+    self.subscriptions[object_id] = events
     return subscription_id
 
-  def unsubscribe(self, subscription_id):
-    del self.subscriptions[subscription_id]
-    return self._rpc("unsubscribe", subscription=subscription_id)
+  def unsubscribe(self, source, event_type):
+    s = self.subscriptions[source][event_type]
+    del self.subscriptions[source][event_type]
+    return self._rpc("unsubscribe", subscription=s.id)
 
   def release(self, object_id):
     return self._rpc("release", object=object_id)
