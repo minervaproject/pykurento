@@ -1,5 +1,5 @@
 tornado==4.0.2
 websocket-client==0.21.0
-gunicorn==19.2.1
+gunicorn==19.5.0
 pysqlite==2.6.3
 SQLAlchemy==0.9.8
